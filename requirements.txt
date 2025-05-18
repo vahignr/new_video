@@ -1,0 +1,8 @@
+openai        # GPT-4o, TTS streaming
+python-dotenv  # read .env for API keys
+requests     # HTTP for SerpAPI & image fetch
+Pillow   # image verify / resizing
+moviepy==1.0.3      # video assembly (needs ffmpeg in PATH)
+pydub       # MP3 duration + concatenation
+tqdm      # simple progress bars
+numpy       # frames & image arrays for MoviePy
