@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-llm_processor.py  –  generate a ~1 200-word YouTube script that *must*
-perform at least one web search and then list its sources.
+llm_processor.py  –  Enhanced script generator that handles diverse query types
+and creates engaging YouTube-style content with proper web research integration.
 
 Needs in .env:
     OPENAI_API_KEY=...
@@ -27,19 +27,50 @@ if not os.getenv("OPENAI_API_KEY"):
 MODEL        = "gpt-4o-mini"
 TARGET_WORDS = 1200
 
-PROMPT = textwrap.dedent("""
-    You are a seasoned YouTube script writer.
+ENHANCED_PROMPT = textwrap.dedent("""
+    You are an expert YouTube content creator who produces engaging, well-researched videos.
 
-    **Before you write**, perform at least one web search to collect
-    up-to-date facts.  Then craft an engaging article-style script of
-    about 1 200 words (≈10 min when read aloud).
+    **RESEARCH FIRST**: Before writing, conduct thorough web searches to gather current, 
+    accurate information. Use multiple searches to cover different aspects of the topic.
 
-    • Conversational tone, short paragraphs.
-    • Insert section headings starting with '###'.
-    • No bullet lists or markdown links.
-    • Finish with a section titled "Sources:" listing every URL you opened.
+    **YOUR TASK**: Create a compelling ~1,200 word script for a YouTube video that will 
+    keep viewers engaged throughout.
 
-    QUERY: "{query}"
+    **CONTENT ADAPTATION**: Adapt your style based on the query type:
+    - **Sports/Football**: Energetic, match-focused, player highlights, league updates
+    - **Music/Bands**: Passionate, concert atmosphere, album releases, band history
+    - **News/Current Events**: Informative, factual, timeline-based, balanced coverage
+    - **Top Lists**: Structured countdown, engaging descriptions, historical context
+    - **General Topics**: Conversational, educational, broad appeal
+
+    **HEADING STRUCTURE (CRITICAL)**:
+    - Start with "### Introduction" (warm welcome, topic overview)
+    - Use 3-6 INFORMATIVE section headings like:
+      ✅ "### Real Madrid's Spectacular Season"
+      ✅ "### Serie A: Juventus vs Inter Milan Rivalry" 
+      ✅ "### Black Sabbath: Masters of Heavy Metal"
+      ✅ "### Breaking: March 2025 Market Developments"
+    - Avoid generic headings like "Current Situation", "Recent Developments"
+    - End with "### Conclusion" (summary, call-to-action)
+    - Finish with "### Sources:" (list all URLs you accessed)
+
+    **WRITING STYLE**:
+    - Conversational, engaging tone (like speaking to a friend)
+    - Short paragraphs (2-4 sentences)
+    - Use transition phrases between sections
+    - Include specific facts, dates, names, numbers
+    - No bullet points or markdown links in main content
+    - Build excitement and maintain viewer interest
+
+    **TECHNICAL REQUIREMENTS**:
+    - ~1,200 words total
+    - 6-8 main sections (including intro/conclusion)
+    - Each section should be 100-200 words
+    - End with complete source URLs (one per line, no formatting)
+
+    **QUERY TO PROCESS**: "{query}"
+
+    Remember: Research thoroughly, write engagingly, structure clearly, cite sources properly.
 """).strip()
 
 URL_REGEX = re.compile(r'https?://\S+')
@@ -50,13 +81,14 @@ def generate_script(query: str,
                     ) -> Tuple[str, List[str]]:
     """
     Returns (script_text, list_of_source_urls).
+    Enhanced to handle diverse query types with better research integration.
     """
 
     response = client.responses.create(
         model=MODEL,
         tools=[{"type": "web_search_preview"}],
         tool_choice={"type": "web_search_preview"},  # force at least one search
-        input=PROMPT.format(query=query),
+        input=ENHANCED_PROMPT.format(query=query),
     )
 
     script_text = response.output_text.strip()
@@ -65,18 +97,49 @@ def generate_script(query: str,
     urls = URL_REGEX.findall(script_text)
     urls = list(dict.fromkeys(urls))  # dedupe, preserve order
 
-    log.info("Script chars: %d   sources found: %d",
-             len(script_text), len(urls))
+    log.info("Script generated - chars: %d, sections: ~%d, sources: %d",
+             len(script_text), 
+             len(re.findall(r'#{3}', script_text)),
+             len(urls))
+    
     return script_text, urls
 
 # ────────── tiny manual test ─────────────────────────────────────────────
 if __name__ == "__main__":
-    demo = "Last 1 Week Market News"
-    script, sources = generate_script(demo)
-
-    print("\n--- script preview ---\n")
-    print(script[:400] + ("…" if len(script) > 400 else ""))
-    print(f"\nSources captured: {len(sources)}")
-    for u in sources[:6]:
-        print("  •", u)
-    print("\n✓ LLM processor (Responses API) OK\n")
+    # Test with different query types
+    test_queries = [
+        "Top 5 Premier League Transfers January 2025",
+        "Black Sabbath greatest hits and legacy", 
+        "What happened in tech world in last month"
+    ]
+    
+    print("🧪 Testing enhanced script generator...\n")
+    
+    for i, demo_query in enumerate(test_queries[:1], 1):  # Test just first one
+        print(f"Test {i}: {demo_query}")
+        script, sources = generate_script(demo_query)
+        
+        # Show preview
+        preview_length = 500
+        print(f"\n--- Script Preview ({len(script)} chars) ---")
+        print(script[:preview_length] + ("..." if len(script) > preview_length else ""))
+        
+        # Show sections count
+        sections = re.findall(r'#{3}\s*(.+)', script)
+        print(f"\n📋 Sections found ({len(sections)}):")
+        for j, section in enumerate(sections[:5], 1):
+            print(f"  {j}. {section}")
+        if len(sections) > 5:
+            print(f"  ... and {len(sections) - 5} more")
+            
+        # Show sources
+        print(f"\n🔗 Sources captured: {len(sources)}")
+        for url in sources[:3]:
+            print(f"  • {url}")
+        if len(sources) > 3:
+            print(f"  ... and {len(sources) - 3} more")
+            
+        print(f"\n✅ Test {i} completed successfully!\n")
+        break  # Only test first query for demo
+        
+    print("🎉 Enhanced LLM processor ready for diverse queries!")
