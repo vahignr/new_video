@@ -1,17 +1,14 @@
 #!/usr/bin/env python
 """
-parser.py – split a GPT script into text segments.
+parser.py – split a GPT script into text segments with natural flow.
 Each segment dict:
     {
         "type": "text",
-        "heading": "Black Sabbath",
-        "content": "Black Sabbath. Paragraphs …"
+        "heading": "Tesla's Battery Revolution",
+        "content": "Paragraphs of content..."
     }
 
-Updated to handle structural vs informative headings properly:
-- Structural headings (Introduction, Conclusion, Sources) are not prepended to speech
-- Informative headings (Serie A: Latest News) are prepended to speech
-- Sources section is completely excluded from TTS processing
+Updated to handle natural scripts without rigid Introduction/Conclusion structure.
 """
 
 import re, logging
@@ -21,12 +18,6 @@ log = logging.getLogger(__name__)
 
 HEAD_RE = re.compile(r"^\s*#{3}\s*(.+)$", re.M)
 
-# Structural headings that shouldn't be spoken
-STRUCTURAL_HEADINGS = {
-    "introduction", "conclusion", "sources", "references", 
-    "bibliography", "further reading", "credits"
-}
-
 def parse_script(script: str):
     segs = []
     parts = HEAD_RE.split(script)
@@ -34,7 +25,12 @@ def parse_script(script: str):
     # parts example: ["intro body", "Heading1", "body1", "Heading2", "body2", …]
     first = parts[0].strip()
     if first:
-        segs.append({"type": "text", "heading": None, "content": first})
+        # First content before any heading - treat as opening segment
+        segs.append({
+            "type": "text", 
+            "heading": "Opening", 
+            "content": first
+        })
 
     it = iter(parts[1:])  # skip intro part
     for head, body in zip(it, it):
@@ -43,26 +39,15 @@ def parse_script(script: str):
         
         # Skip Sources section entirely
         if head_clean.lower().startswith("sources"):
-            log.info("Skipping Sources section from TTS processing")
+            log.info("Skipping Sources section from processing")
             continue
             
         if not body_clean:
             continue
-            
-        # Check if this is a structural heading that shouldn't be spoken
-        is_structural = any(
-            head_clean.lower().startswith(structural) 
-            for structural in STRUCTURAL_HEADINGS
-        )
         
-        if is_structural:
-            # Don't prepend structural headings to content
-            content = body_clean
-            log.info(f"Structural heading detected: '{head_clean}' - not prepending to speech")
-        else:
-            # Prepend informative headings to content
-            content = f"{head_clean}. {body_clean}"
-            log.info(f"Informative heading detected: '{head_clean}' - prepending to speech")
+        # For natural scripts, all headings are meaningful content descriptors
+        # so we include them in the speech for context
+        content = f"{head_clean}. {body_clean}"
         
         segs.append({
             "type": "text", 
@@ -72,22 +57,3 @@ def parse_script(script: str):
 
     log.info("Parsed script into %d segment(s)", len(segs))
     return segs
-
-# quick test
-if __name__ == "__main__":
-    demo = """### Introduction
-Welcome to our show!
-
-### Serie A: Latest News
-Italian football is exciting.
-
-### Conclusion
-That's all for today.
-
-### Sources
-- https://example.com"""
-    
-    for s in parse_script(demo):
-        print(f"Heading: {s['heading']}")
-        print(f"Content: {s['content']}")
-        print("---")

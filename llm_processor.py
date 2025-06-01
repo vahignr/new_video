@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-llm_processor.py  –  Enhanced script generator that handles diverse query types
-and creates engaging YouTube-style content with proper web research integration.
+llm_processor.py  –  Enhanced script generator that creates natural, flowing content
+without rigid structural sections and always uses web research for current information.
 
 Needs in .env:
     OPENAI_API_KEY=...
@@ -24,53 +24,60 @@ client = OpenAI()
 if not os.getenv("OPENAI_API_KEY"):
     sys.exit("❌  OPENAI_API_KEY missing in .env")
 
-MODEL        = "gpt-4o-mini"
+MODEL        = "gpt-4.1-2025-04-14"
 TARGET_WORDS = 1200
 
 ENHANCED_PROMPT = textwrap.dedent("""
     You are an expert YouTube content creator who produces engaging, well-researched videos.
+    
+    **CRITICAL: ALWAYS START WITH WEB SEARCHES**
+    Before writing ANYTHING, you MUST conduct extensive web searches to gather:
+    - Current news and developments (last 30 days if possible)
+    - Latest statistics and data
+    - Recent events and updates
+    - Trending discussions about the topic
+    
+    **YOUR TASK**: Create a compelling ~1,200 word script that feels like natural storytelling,
+    not a formal essay with rigid sections.
 
-    **RESEARCH FIRST**: Before writing, conduct thorough web searches to gather current, 
-    accurate information. Use multiple searches to cover different aspects of the topic.
-
-    **YOUR TASK**: Create a compelling ~1,200 word script for a YouTube video that will 
-    keep viewers engaged throughout.
-
-    **CONTENT ADAPTATION**: Adapt your style based on the query type:
-    - **Sports/Football**: Energetic, match-focused, player highlights, league updates
-    - **Music/Bands**: Passionate, concert atmosphere, album releases, band history
-    - **News/Current Events**: Informative, factual, timeline-based, balanced coverage
-    - **Top Lists**: Structured countdown, engaging descriptions, historical context
-    - **General Topics**: Conversational, educational, broad appeal
-
-    **HEADING STRUCTURE (CRITICAL)**:
-    - Start with "### Introduction" (warm welcome, topic overview)
-    - Use 3-6 INFORMATIVE section headings like:
-      ✅ "### Real Madrid's Spectacular Season"
-      ✅ "### Serie A: Juventus vs Inter Milan Rivalry" 
-      ✅ "### Black Sabbath: Masters of Heavy Metal"
-      ✅ "### Breaking: March 2025 Market Developments"
-    - Avoid generic headings like "Current Situation", "Recent Developments"
-    - End with "### Conclusion" (summary, call-to-action)
-    - Finish with "### Sources:" (list all URLs you accessed)
-
+    **NATURAL FLOW GUIDELINES**:
+    - NO formulaic "Introduction" or "Conclusion" sections
+    - Start with an engaging hook, interesting fact, or current event
+    - Let topics flow naturally from one to another
+    - Use conversational transitions between ideas
+    - End with forward-looking insights or thought-provoking questions
+    
+    **SECTION HEADINGS**:
+    - Use 4-6 DESCRIPTIVE headings that preview content, NOT generic labels
+    - Good: "### Tesla's Game-Changing Battery Breakthrough"
+    - Good: "### Why Hybrid Cars Are Outselling EVs in 2024" 
+    - Bad: "### Introduction", "### Overview", "### Conclusion"
+    - Each heading should make viewers curious about what's next
+    
+    **CONTENT REQUIREMENTS**:
+    - Open with something surprising, current, or attention-grabbing
+    - Weave in specific dates, numbers, and recent examples throughout
+    - Use short paragraphs (2-4 sentences) for easy listening
+    - Include real-world examples and case studies
+    - Build narrative tension - what's at stake? why does this matter now?
+    
     **WRITING STYLE**:
-    - Conversational, engaging tone (like speaking to a friend)
-    - Short paragraphs (2-4 sentences)
-    - Use transition phrases between sections
-    - Include specific facts, dates, names, numbers
-    - No bullet points or markdown links in main content
-    - Build excitement and maintain viewer interest
-
+    - Conversational and engaging, like talking to a curious friend
+    - Use "you" to address the viewer directly
+    - Include rhetorical questions to maintain engagement
+    - Add personality - surprise, excitement, concern where appropriate
+    - Avoid academic or overly formal language
+    
     **TECHNICAL REQUIREMENTS**:
     - ~1,200 words total
-    - 6-8 main sections (including intro/conclusion)
-    - Each section should be 100-200 words
-    - End with complete source URLs (one per line, no formatting)
-
-    **QUERY TO PROCESS**: "{query}"
-
-    Remember: Research thoroughly, write engagingly, structure clearly, cite sources properly.
+    - 4-6 sections with descriptive headings
+    - Each section: 200-300 words
+    - Must cite sources at the end
+    
+    **IMPORTANT**: Research thoroughly first, then write naturally. The script should
+    feel like an engaging story about "{query}", not a Wikipedia article.
+    
+    End with "### Sources:" followed by actual URLs you accessed (no formatting).
 """).strip()
 
 URL_REGEX = re.compile(r'https?://\S+')
@@ -81,13 +88,13 @@ def generate_script(query: str,
                     ) -> Tuple[str, List[str]]:
     """
     Returns (script_text, list_of_source_urls).
-    Enhanced to handle diverse query types with better research integration.
+    Enhanced to create natural, flowing content with mandatory web research.
     """
 
     response = client.responses.create(
         model=MODEL,
         tools=[{"type": "web_search_preview"}],
-        tool_choice={"type": "web_search_preview"},  # force at least one search
+        tool_choice={"type": "web_search_preview"},  # force web search
         input=ENHANCED_PROMPT.format(query=query),
     )
 
@@ -106,40 +113,20 @@ def generate_script(query: str,
 
 # ────────── tiny manual test ─────────────────────────────────────────────
 if __name__ == "__main__":
-    # Test with different query types
-    test_queries = [
-        "Top 5 Premier League Transfers January 2025",
-        "Black Sabbath greatest hits and legacy", 
-        "What happened in tech world in last month"
-    ]
+    demo_query = "advantages and disadvantages of hybrid cars"
+    print(f"Generating script for: {demo_query}\n")
     
-    print("🧪 Testing enhanced script generator...\n")
+    script, sources = generate_script(demo_query)
     
-    for i, demo_query in enumerate(test_queries[:1], 1):  # Test just first one
-        print(f"Test {i}: {demo_query}")
-        script, sources = generate_script(demo_query)
-        
-        # Show preview
-        preview_length = 500
-        print(f"\n--- Script Preview ({len(script)} chars) ---")
-        print(script[:preview_length] + ("..." if len(script) > preview_length else ""))
-        
-        # Show sections count
-        sections = re.findall(r'#{3}\s*(.+)', script)
-        print(f"\n📋 Sections found ({len(sections)}):")
-        for j, section in enumerate(sections[:5], 1):
-            print(f"  {j}. {section}")
-        if len(sections) > 5:
-            print(f"  ... and {len(sections) - 5} more")
-            
-        # Show sources
-        print(f"\n🔗 Sources captured: {len(sources)}")
-        for url in sources[:3]:
-            print(f"  • {url}")
-        if len(sources) > 3:
-            print(f"  ... and {len(sources) - 3} more")
-            
-        print(f"\n✅ Test {i} completed successfully!\n")
-        break  # Only test first query for demo
-        
-    print("🎉 Enhanced LLM processor ready for diverse queries!")
+    # Show preview
+    print("--- Script Preview ---")
+    print(script[:800] + "...\n")
+    
+    # Show sections
+    sections = re.findall(r'#{3}\s*(.+)', script)
+    print(f"Sections found ({len(sections)}):")
+    for i, section in enumerate(sections, 1):
+        print(f"  {i}. {section}")
+    
+    print(f"\nSources: {len(sources)}")
+    print("✅ Script generated successfully!")
